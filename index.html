@@ -13,7 +13,7 @@ button { cursor: pointer; }
 </head>
 <body>
 
-<h1>Gerador de QR Code (Lambda) 2123</h1>
+<h1>Gerador de QR Code (Lambda)</h1>
 
 <label for="tipo">Tipo de QR Code:</label>
 <select id="tipo">
@@ -63,21 +63,16 @@ document.getElementById("gerar").addEventListener("click", async () => {
 
     if (!resp.ok) throw new Error("Erro ao gerar QR code");
 
-    // Parse do JSON retornado pelo Lambda Proxy
-    const json = await resp.json();
+    // Aqui pegamos o base64 puro (Lambda atual)
+    const base64Body = await resp.text();
 
-    if (json.error) throw new Error(json.error);
-
-    const base64Body = json.body;
     const resultadoDiv = document.getElementById("resultado");
     resultadoDiv.innerHTML = "";
 
     if (formato === "svg") {
-      // SVG: decodifica base64 para string e insere no DOM
       const svgText = atob(base64Body);
       resultadoDiv.innerHTML = svgText;
     } else {
-      // PNG / outros: cria Data URL
       const img = document.createElement("img");
       img.src = `data:image/png;base64,${base64Body}`;
       resultadoDiv.appendChild(img);
