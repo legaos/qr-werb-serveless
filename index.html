@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Gerador de QR Code</title>
+<title>Gerador de QR Code - Serveless</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body { font-family: Arial, sans-serif; max-width:700px; margin:20px auto; padding:10px; }
@@ -47,7 +47,7 @@ button:hover { background:#0b5ed7; }
 <a id="baixar" href="#" download>Baixar QR Code</a>
 
 <script>
-const API_URL = "https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr"; // substitua pelo seu
+const API_URL = "https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr";
 
 const camposPorTipo = {
     "URL": [{id:"url", label:"URL"}],
@@ -82,7 +82,7 @@ function renderCampos() {
 renderCampos();
 document.getElementById("tipo").addEventListener("change", renderCampos);
 
-// Função principal
+// Gerar QR Code
 document.getElementById("gerar").onclick = async () => {
     const tipo = document.getElementById("tipo").value;
     const formato = document.getElementById("formato").value;
@@ -105,29 +105,28 @@ document.getElementById("gerar").onclick = async () => {
             body: JSON.stringify(payload),
         });
 
-        if (!resp.ok) { 
+        if (!resp.ok) {
             const txt = await resp.text().catch(() => "");
-            preview.innerHTML = "<b>Erro:</b> " + (txt || resp.statusText); 
-            return; 
+            preview.innerHTML = "<b>Erro:</b> " + (txt || resp.statusText);
+            return;
         }
 
-        // Recebe binário direto
         const contentType = resp.headers.get("Content-Type") || "application/octet-stream";
         const arrayBuffer = await resp.arrayBuffer();
         const blob = new Blob([arrayBuffer], { type: contentType });
         const url  = URL.createObjectURL(blob);
 
         // Preview
-        if (contentType.startsWith("image/png")) {
-            preview.innerHTML = `<img src="${url}" style="max-width:300px">`;
-        } else if (contentType.startsWith("image/svg+xml")) {
+        if (contentType === "image/png") {
+            preview.innerHTML = `<img src="${url}">`;
+        } else if (contentType === "image/svg+xml") {
             const text = await blob.text();
             preview.innerHTML = text;
         } else {
-            preview.innerHTML = "<p>Arquivo pronto: QR Code DXF</p>";
+            preview.innerHTML = `<p>Arquivo DXF pronto para download.</p>`;
         }
 
-        // Botão de download
+        // Download
         baixar.href = url;
         baixar.download = `qr_code.${formato}`;
         baixar.style.display = "inline-block";
