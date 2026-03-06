@@ -9,6 +9,7 @@ body { font-family: Arial, sans-serif; margin: 2rem; max-width: 600px; }
 input, select, textarea, button { width: 100%; padding: 0.5rem; margin: 0.5rem 0; box-sizing: border-box; }
 button { cursor: pointer; }
 #resultado img, #resultado svg { max-width: 100%; margin-top: 1rem; border: 1px solid #ccc; }
+#download { margin-top: 1rem; }
 </style>
 </head>
 <body>
@@ -30,6 +31,7 @@ button { cursor: pointer; }
 <select id="formato">
   <option value="png">PNG</option>
   <option value="svg">SVG</option>
+  <option value="dxf">DXF</option>
 </select>
 
 <label for="raio">Raio do buraco central:</label>
@@ -38,15 +40,15 @@ button { cursor: pointer; }
 <button id="gerar">Gerar QR Code</button>
 
 <div id="resultado"></div>
+<a id="download" href="#" download>Baixar arquivo</a>
 
 <script>
 const API_URL = "https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr";
 
-// JSON pré-carregados por tipo
 const exemplos = {
   "URL": JSON.stringify({ "url":"https://example.com" }, null, 2),
   "CONTATO": JSON.stringify({
-      "nome":"Teste",
+      "nome":"Jose Silva",
       "telefone":"11999999999",
       "email":"leo@example.com",
       "empresa":"Minha Empresa",
@@ -55,14 +57,14 @@ const exemplos = {
   "REDE_SOCIAL": JSON.stringify({ "rede":"instagram","usuario":"@meuperfil" }, null, 2),
   "PIX": JSON.stringify({
       "chave":"11999999999",
-      "nome":"LTesteeonardo",
+      "nome":"Jose",
       "cidade":"São Paulo",
       "valor":"10.50",
       "descricao":"Doação"
   }, null, 2)
 };
 
-// Atualiza textarea quando muda o tipo
+// atualiza textarea com JSON pré-carregado
 document.getElementById("tipo").addEventListener("change", () => {
   const tipo = document.getElementById("tipo").value;
   document.getElementById("dados").value = exemplos[tipo] || "";
@@ -77,7 +79,6 @@ document.getElementById("gerar").addEventListener("click", async () => {
 
   const formato = document.getElementById("formato").value;
   const raio = parseInt(document.getElementById("raio").value) || 0;
-
   const payload = { tipo, dados, formato, raio_buraco: raio };
 
   try {
@@ -89,18 +90,27 @@ document.getElementById("gerar").addEventListener("click", async () => {
 
     if (!resp.ok) throw new Error("Erro ao gerar QR code");
 
-    // Lambda retorna base64 puro
     const base64Body = await resp.text();
     const resultadoDiv = document.getElementById("resultado");
+    const downloadLink = document.getElementById("download");
     resultadoDiv.innerHTML = "";
+    downloadLink.style.display = "inline-block";
 
     if (formato === "svg") {
       const svgText = atob(base64Body);
       resultadoDiv.innerHTML = svgText;
-    } else {
+      downloadLink.href = 'data:image/svg+xml;base64,' + base64Body;
+      downloadLink.download = 'qr.svg';
+    } else if (formato === "png") {
       const img = document.createElement("img");
       img.src = `data:image/png;base64,${base64Body}`;
       resultadoDiv.appendChild(img);
+      downloadLink.href = `data:image/png;base64,${base64Body}`;
+      downloadLink.download = 'qr.png';
+    } else if (formato === "dxf") {
+      downloadLink.href = `data:application/dxf;base64,${base64Body}`;
+      downloadLink.download = 'qr.dxf';
+      resultadoDiv.innerHTML = "<p>DXF pronto para download (não é renderizável inline)</p>";
     }
 
   } catch(e) {
