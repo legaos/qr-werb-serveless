@@ -47,7 +47,7 @@ button:hover { background:#0b5ed7; }
 <a id="baixar" href="#" download>Baixar QR Code</a>
 
 <script>
-const API_URL = "https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr";
+const API_URL = "https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr"; // substitua pelo seu
 
 const camposPorTipo = {
     "URL": [{id:"url", label:"URL"}],
@@ -105,29 +105,26 @@ document.getElementById("gerar").onclick = async () => {
             body: JSON.stringify(payload),
         });
 
-        if (!resp.ok) { const txt = await resp.text().catch(()=> ""); preview.innerHTML = "<b>Erro:</b> "+(txt||resp.statusText); return; }
+        if (!resp.ok) { 
+            const txt = await resp.text().catch(() => "");
+            preview.innerHTML = "<b>Erro:</b> " + (txt || resp.statusText); 
+            return; 
+        }
 
-        // Recebe o base64 da Lambda e transforma em blob
-        const data = await resp.json();
-        const bin = atob(data.body);
-        const array = new Uint8Array(bin.length);
-        for(let i=0;i<bin.length;i++) array[i]=bin.charCodeAt(i);
-        let contentType = "application/octet-stream";
-        if (formato === "png") contentType = "image/png";
-        else if (formato === "svg") contentType = "image/svg+xml";
-        else if (formato === "dxf") contentType = "application/dxf";
-
-        const blob = new Blob([array], { type: contentType });
+        // Recebe binário direto
+        const contentType = resp.headers.get("Content-Type") || "application/octet-stream";
+        const arrayBuffer = await resp.arrayBuffer();
+        const blob = new Blob([arrayBuffer], { type: contentType });
         const url  = URL.createObjectURL(blob);
 
-        // Preview inline para PNG e SVG
-        if (formato === "svg") {
+        // Preview
+        if (contentType.startsWith("image/png")) {
+            preview.innerHTML = `<img src="${url}" style="max-width:300px">`;
+        } else if (contentType.startsWith("image/svg+xml")) {
             const text = await blob.text();
             preview.innerHTML = text;
-        } else if (formato === "png") {
-            preview.innerHTML = `<img src="${url}" style="max-width:300px">`;
         } else {
-            preview.innerHTML = `<p>Arquivo pronto: QR Code DXF</p>`;
+            preview.innerHTML = "<p>Arquivo pronto: QR Code DXF</p>";
         }
 
         // Botão de download
