@@ -13,7 +13,7 @@ button { cursor: pointer; }
 </head>
 <body>
 
-<h1>Gerador de QR Code (Lambda) 2121</h1>
+<h1>Gerador de QR Code (Lambda) 2123</h1>
 
 <label for="tipo">Tipo de QR Code:</label>
 <select id="tipo">
@@ -40,7 +40,7 @@ button { cursor: pointer; }
 <div id="resultado"></div>
 
 <script>
-const API_URL = "https://<SEU_API_ID>.execute-api.us-east-1.amazonaws.com/prod/qr";
+const API_URL = "https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr";
 
 document.getElementById("gerar").addEventListener("click", async () => {
   const tipo = document.getElementById("tipo").value;
