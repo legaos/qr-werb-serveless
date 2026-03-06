@@ -19,7 +19,7 @@ button:hover { background:#0b5ed7; }
 </head>
 <body>
 
-<h1>Gerador de QR Code - Serveless</h1>
+<h1>Gerador de QR Code - Serveless 2210</h1>
 
 <label>Tipo de QR Code</label>
 <select id="tipo">
@@ -47,8 +47,10 @@ button:hover { background:#0b5ed7; }
 <a id="baixar" href="#" download>Baixar QR Code</a>
 
 <script>
+// Sua Lambda URL
 const API_URL = "https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr";
 
+// Campos por tipo
 const camposPorTipo = {
     "URL": [{id:"url", label:"URL"}],
     "CONTATO": [
@@ -71,18 +73,25 @@ const camposPorTipo = {
     ]
 };
 
-// Renderiza campos dinâmicos
 function renderCampos() {
     const tipo = document.getElementById("tipo").value;
     const campos = camposPorTipo[tipo];
     let html = "";
-    campos.forEach(c => { html += `<label>${c.label}</label><input id="${c.id}">`; });
+    campos.forEach(c => html += `<label>${c.label}</label><input id="${c.id}">`);
     document.getElementById("campos").innerHTML = html;
 }
 renderCampos();
 document.getElementById("tipo").addEventListener("change", renderCampos);
 
-// Gerar QR Code
+// Decodifica base64 em Uint8Array
+function base64ToArrayBuffer(base64) {
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+}
+
 document.getElementById("gerar").onclick = async () => {
     const tipo = document.getElementById("tipo").value;
     const formato = document.getElementById("formato").value;
@@ -102,37 +111,33 @@ document.getElementById("gerar").onclick = async () => {
         const resp = await fetch(API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(payload)
         });
 
-        if (!resp.ok) {
-            const txt = await resp.text().catch(() => "");
-            preview.innerHTML = "<b>Erro:</b> " + (txt || resp.statusText);
-            return;
-        }
+        if (!resp.ok) throw new Error(`Erro: ${resp.status}`);
 
         const contentType = resp.headers.get("Content-Type") || "application/octet-stream";
-        const arrayBuffer = await resp.arrayBuffer();
+        const base64 = await resp.text();
+        const arrayBuffer = base64ToArrayBuffer(base64);
         const blob = new Blob([arrayBuffer], { type: contentType });
         const url  = URL.createObjectURL(blob);
 
         // Preview
-        if (contentType === "image/png") {
+        if (contentType.startsWith("image/")) {
             preview.innerHTML = `<img src="${url}">`;
-        } else if (contentType === "image/svg+xml") {
-            const text = await blob.text();
-            preview.innerHTML = text;
-        } else {
+        } else if (contentType === "application/dxf") {
             preview.innerHTML = `<p>Arquivo DXF pronto para download.</p>`;
+        } else {
+            preview.innerHTML = `<p>Arquivo gerado: ${formato}</p>`;
         }
 
-        // Download
+        // Botão de download
         baixar.href = url;
         baixar.download = `qr_code.${formato}`;
         baixar.style.display = "inline-block";
 
     } catch(e) {
-        preview.innerHTML = "<b>Erro:</b> "+e.message;
+        preview.innerHTML = "<b>Erro:</b> " + e.message;
     }
 };
 
