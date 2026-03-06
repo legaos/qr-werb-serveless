@@ -2,181 +2,86 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Gerador de QR Code</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Code Generator</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        max-width: 700px;
-        margin: 20px auto;
-        padding: 10px;
-    }
-    label { font-weight: bold; display: block; margin-top: 15px; }
-    input, select {
-        width: 100%;
-        padding: 10px;
-        margin-top: 5px;
-        border-radius: 5px;
-        border: 1px solid #CCC;
-    }
-    button {
-        margin-top: 20px;
-        padding: 12px;
-        width: 100%;
-        font-size: 16px;
-        background: #0d6efd;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-    }
-    button:hover { background: #0b5ed7; }
-
-    #preview {
-        margin-top: 20px;
-        padding: 20px;
-        border: 1px dashed #AAA;
-        text-align: center;
-    }
+  body { font-family: Arial, sans-serif; margin: 2rem; }
+  input, select, button { padding: 0.5rem; margin: 0.5rem 0; width: 100%; max-width: 400px; }
+  img { margin-top: 1rem; border: 1px solid #ccc; }
 </style>
 </head>
-
 <body>
-<h1>Gerador de QR Code</h1>
+<h1>Gerador de QR Code (via Lambda)</h1>
 
-<label>Tipo de QR Code</label>
+<label for="tipo">Tipo de QR Code:</label>
 <select id="tipo">
-    <option value="URL">URL</option>
-    <option value="CONTATO">Contato (vCard)</option>
-    <option value="REDE">Rede Social</option>
-    <option value="PIX">PIX</option>
+  <option value="URL">URL</option>
+  <option value="CONTATO">Contato / VCard</option>
+  <option value="REDE_SOCIAL">Rede Social</option>
+  <option value="PIX">Pix</option>
 </select>
 
-<div id="campos"></div>
+<label for="dados">Dados (JSON):</label>
+<textarea id="dados" rows="6" placeholder='Ex: {"url":"https://example.com"}'></textarea>
 
-<label>Formato do arquivo</label>
+<label for="formato">Formato:</label>
 <select id="formato">
-    <option value="png">PNG</option>
-    <option value="svg">SVG</option>
-    <option value="dxf">DXF</option>
+  <option value="png">PNG</option>
+  <option value="svg">SVG</option>
 </select>
 
-<label>Raio do espaço central (0 a 8)</label>
-<input type="number" id="raio" min="0" max="8" value="0">
+<label for="raio">Raio do buraco central:</label>
+<input type="number" id="raio" value="0" min="0" max="10">
 
 <button id="gerar">Gerar QR Code</button>
 
-<div id="preview"></div>
+<div id="resultado"></div>
 
 <script>
-const API_URL = "https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr"; // CloudFront redireciona para API Gateway
+const API_URL = "https://<SEU_API_ID>.execute-api.us-east-1.amazonaws.com/prod/qr";
 
-// Campos dinâmicos por tipo
-const camposPorTipo = {
-    "URL": [
-        {id:"url", label:"URL"}
-    ],
+document.getElementById("gerar").addEventListener("click", async () => {
+  const tipo = document.getElementById("tipo").value;
+  let dadosText = document.getElementById("dados").value;
+  let dados;
+  try { dados = JSON.parse(dadosText || "{}"); } 
+  catch(e) { alert("JSON inválido"); return; }
 
-    "CONTATO": [
-        {id:"nome", label:"Nome"},
-        {id:"telefone", label:"Telefone"},
-        {id:"email", label:"Email"},
-        {id:"empresa", label:"Empresa (opcional)"},
-        {id:"cargo", label:"Cargo (opcional)"}
-    ],
-
-    "REDE": [
-        {id:"rede", label:"Rede (instagram, facebook, linkedin, twitter/x, youtube, tiktok, whatsapp)"},
-        {id:"usuario", label:"Usuário / Número"}
-    ],
-
-    "PIX": [
-        {id:"chave", label:"Chave PIX"},
-        {id:"nome", label:"Nome"},
-        {id:"cidade", label:"Cidade"},
-        {id:"valor", label:"Valor (opcional)"},
-        {id:"descricao", label:"Descrição (opcional)"}
-    ]
-};
-
-// Renderiza campos dinâmicos
-function renderCampos() {
-    const tipo = document.getElementById("tipo").value;
-    const campos = camposPorTipo[tipo];
-
-    let html = "";
-    campos.forEach(c => {
-        html += `<label>${c.label}</label><input id="${c.id}">`;
-    });
-
-    document.getElementById("campos").innerHTML = html;
-}
-renderCampos();
-
-// Muda os campos quando o tipo muda
-document.getElementById("tipo").addEventListener("change", renderCampos);
-
-
-// Evento principal — Gerar QR
-
-document.getElementById("gerar").onclick = async () => {
-  const tipo    = document.getElementById("tipo").value;
   const formato = document.getElementById("formato").value;
-  const raio    = document.getElementById("raio").value;
-
-  const dados = {};
-  camposPorTipo[tipo].forEach(c => {
-    dados[c.id] = document.getElementById(c.id).value;
-  });
+  const raio = parseInt(document.getElementById("raio").value) || 0;
 
   const payload = { tipo, dados, formato, raio_buraco: raio };
 
-  const preview = document.getElementById("preview");
-  preview.textContent = "Gerando...";
+  try {
+    const resp = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-  const resp = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+    if (!resp.ok) throw new Error("Erro ao gerar QR code");
 
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => "");
-    preview.innerHTML = "<b>Erro:</b> " + (txt || resp.statusText);
-    return;
+    const data = await resp.json();
+
+    // Transformar base64 da Lambda em Data URL
+    const imgBase64 = data.body;
+    const resultadoDiv = document.getElementById("resultado");
+    resultadoDiv.innerHTML = "";
+
+    if(formato === "svg") {
+      // SVG pode ser inserido diretamente
+      resultadoDiv.innerHTML = atob(imgBase64);
+    } else {
+      // PNG / outros
+      const img = document.createElement("img");
+      img.src = `data:image/png;base64,${imgBase64}`;
+      resultadoDiv.appendChild(img);
+    }
+
+  } catch(e) {
+    alert("Erro: " + e.message);
   }
-
-  // Cabeçalhos
-  const contentType = resp.headers.get("Content-Type") || "application/octet-stream";
-  const dispo = resp.headers.get("Content-Disposition") || "";
-  // filename pode vir codificado (RFC5987); tente extrair com fallback
-  let filename = "arquivo";
-  const m1 = dispo.match(/filename\*=UTF-8''([^;]+)/i);
-  const m2 = dispo.match(/filename="([^"]+)"/i);
-  if (m1) filename = decodeURIComponent(m1[1]);
-  else if (m2) filename = m2[1];
-
-  // Recebe binário corretamente
-  const blob = await resp.blob();
-  const url  = URL.createObjectURL(blob);
-
-  // Download automático
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  // Preview (quando for imagem)
-  if (contentType.startsWith("image/")) {
-    preview.innerHTML = `<img src="${url}" style="max-width:300px">`;
-  } else {
-    preview.innerHTML = `<p>Arquivo pronto: ${filename}</p>`;
-  }
-};
+});
 </script>
-
 </body>
 </html>
