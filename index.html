@@ -1,147 +1,291 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+
 <meta charset="UTF-8">
-<title>Gerador de QR Code - Serveless</title>
+<title>QR Code Generator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
-body { font-family: Arial, sans-serif; max-width:700px; margin:20px auto; padding:10px; }
-h1 { text-align:center; }
-label { font-weight:bold; display:block; margin-top:15px; }
-input, select { width:100%; padding:10px; margin-top:5px; border-radius:5px; border:1px solid #CCC; }
-button { margin-top:20px; padding:12px; width:100%; font-size:16px; background:#0d6efd; color:white; border:none; border-radius:6px; cursor:pointer; }
-button:hover { background:#0b5ed7; }
-#preview { margin-top:20px; padding:20px; border:1px dashed #AAA; text-align:center; }
-#preview img, #preview svg { max-width:100%; height:auto; border:1px solid #ccc; }
-#baixar { display:none; margin-top:10px; padding:10px; text-align:center; background:#198754; color:white; text-decoration:none; border-radius:6px; }
-#baixar:hover { background:#157347; }
+
+*{
+box-sizing:border-box;
+font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+}
+
+body{
+margin:0;
+background:#f4f6fb;
+display:flex;
+justify-content:center;
+padding:40px 10px;
+}
+
+.container{
+width:100%;
+max-width:720px;
+background:white;
+border-radius:12px;
+padding:35px;
+box-shadow:0 8px 30px rgba(0,0,0,0.08);
+}
+
+h1{
+text-align:center;
+margin-top:0;
+margin-bottom:30px;
+}
+
+label{
+display:block;
+margin-top:18px;
+font-weight:600;
+}
+
+input,select{
+width:100%;
+padding:11px;
+margin-top:6px;
+border-radius:6px;
+border:1px solid #ddd;
+font-size:15px;
+}
+
+button{
+margin-top:25px;
+width:100%;
+padding:13px;
+border:none;
+border-radius:8px;
+background:#2563eb;
+color:white;
+font-size:16px;
+font-weight:600;
+cursor:pointer;
+transition:0.2s;
+}
+
+button:hover{
+background:#1d4ed8;
+}
+
+.preview{
+margin-top:30px;
+padding:25px;
+border:2px dashed #ddd;
+border-radius:10px;
+text-align:center;
+min-height:120px;
+}
+
+.preview img{
+max-width:280px;
+}
+
+.download{
+display:none;
+margin-top:18px;
+padding:12px;
+background:#16a34a;
+color:white;
+border-radius:8px;
+text-decoration:none;
+font-weight:600;
+}
+
+.download:hover{
+background:#15803d;
+}
+
+.loading{
+color:#666;
+}
+
 </style>
 </head>
+
 <body>
 
-<h1>Gerador de QR Code - Serveless 2210</h1>
+<div class="container">
+
+<h1>Gerador de QR Code - Serveless</h1>
 
 <label>Tipo de QR Code</label>
+
 <select id="tipo">
-    <option value="URL">URL</option>
-    <option value="CONTATO">Contato (vCard)</option>
-    <option value="REDE">Rede Social</option>
-    <option value="PIX">PIX</option>
+<option value="URL">URL</option>
+<option value="CONTATO">Contato</option>
+<option value="REDE">Rede Social</option>
+<option value="PIX">PIX</option>
 </select>
 
 <div id="campos"></div>
 
-<label>Formato do arquivo</label>
+<label>Formato</label>
+
 <select id="formato">
-    <option value="png">PNG</option>
-    <option value="svg">SVG</option>
-    <option value="dxf">DXF</option>
+<option value="png">PNG</option>
+<option value="svg">SVG</option>
+<option value="dxf">DXF</option>
 </select>
 
-<label>Raio do espaço central (0 a 8)</label>
+<label>Espaço central</label>
+
 <input type="number" id="raio" min="0" max="8" value="0">
 
 <button id="gerar">Gerar QR Code</button>
 
-<div id="preview"></div>
-<a id="baixar" href="#" download>Baixar QR Code</a>
+<div class="preview" id="preview"></div>
+
+<a id="baixar" class="download">Baixar QR Code</a>
+
+</div>
 
 <script>
-// Sua Lambda URL
-const API_URL = "https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr";
 
-// Campos por tipo
-const camposPorTipo = {
-    "URL": [{id:"url", label:"URL"}],
-    "CONTATO": [
-        {id:"nome", label:"Nome"},
-        {id:"telefone", label:"Telefone"},
-        {id:"email", label:"Email"},
-        {id:"empresa", label:"Empresa (opcional)"},
-        {id:"cargo", label:"Cargo (opcional)"}
-    ],
-    "REDE": [
-        {id:"rede", label:"Rede (instagram, facebook, linkedin, twitter/x, youtube, tiktok, whatsapp)"},
-        {id:"usuario", label:"Usuário / Número"}
-    ],
-    "PIX": [
-        {id:"chave", label:"Chave PIX"},
-        {id:"nome", label:"Nome"},
-        {id:"cidade", label:"Cidade"},
-        {id:"valor", label:"Valor (opcional)"},
-        {id:"descricao", label:"Descrição (opcional)"}
-    ]
-};
+const API_URL="https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr";
 
-function renderCampos() {
-    const tipo = document.getElementById("tipo").value;
-    const campos = camposPorTipo[tipo];
-    let html = "";
-    campos.forEach(c => html += `<label>${c.label}</label><input id="${c.id}">`);
-    document.getElementById("campos").innerHTML = html;
-}
-renderCampos();
-document.getElementById("tipo").addEventListener("change", renderCampos);
+const camposPorTipo={
 
-// Decodifica base64 em Uint8Array
-function base64ToArrayBuffer(base64) {
-    const binary = atob(base64);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes;
+URL:[
+{id:"url",label:"URL"}
+],
+
+CONTATO:[
+{id:"nome",label:"Nome"},
+{id:"telefone",label:"Telefone"},
+{id:"email",label:"Email"},
+{id:"empresa",label:"Empresa"},
+{id:"cargo",label:"Cargo"}
+],
+
+REDE:[
+{id:"rede",label:"Rede"},
+{id:"usuario",label:"Usuário"}
+],
+
+PIX:[
+{id:"chave",label:"Chave PIX"},
+{id:"nome",label:"Nome"},
+{id:"cidade",label:"Cidade"},
+{id:"valor",label:"Valor"},
+{id:"descricao",label:"Descrição"}
+]
+
 }
 
-document.getElementById("gerar").onclick = async () => {
-    const tipo = document.getElementById("tipo").value;
-    const formato = document.getElementById("formato").value;
-    const raio = document.getElementById("raio").value;
+function renderCampos(){
 
-    const dados = {};
-    camposPorTipo[tipo].forEach(c => { dados[c.id] = document.getElementById(c.id).value; });
+const tipo=document.getElementById("tipo").value
+const campos=camposPorTipo[tipo]
 
-    const payload = { tipo, dados, formato, raio_buraco: raio };
+let html=""
 
-    const preview = document.getElementById("preview");
-    const baixar = document.getElementById("baixar");
-    preview.textContent = "Gerando...";
-    baixar.style.display = "none";
+campos.forEach(c=>{
+html+=`<label>${c.label}</label><input id="${c.id}">`
+})
 
-    try {
-        const resp = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
+document.getElementById("campos").innerHTML=html
 
-        if (!resp.ok) throw new Error(`Erro: ${resp.status}`);
+}
 
-        const contentType = resp.headers.get("Content-Type") || "application/octet-stream";
-        const base64 = await resp.text();
-        const arrayBuffer = base64ToArrayBuffer(base64);
-        const blob = new Blob([arrayBuffer], { type: contentType });
-        const url  = URL.createObjectURL(blob);
+renderCampos()
 
-        // Preview
-        if (contentType.startsWith("image/")) {
-            preview.innerHTML = `<img src="${url}">`;
-        } else if (contentType === "application/dxf") {
-            preview.innerHTML = `<p>Arquivo DXF pronto para download.</p>`;
-        } else {
-            preview.innerHTML = `<p>Arquivo gerado: ${formato}</p>`;
-        }
+document.getElementById("tipo").addEventListener("change",renderCampos)
 
-        // Botão de download
-        baixar.href = url;
-        baixar.download = `qr_code.${formato}`;
-        baixar.style.display = "inline-block";
+function base64ToArrayBuffer(base64){
 
-    } catch(e) {
-        preview.innerHTML = "<b>Erro:</b> " + e.message;
-    }
-};
+const binary=atob(base64)
+const len=binary.length
+const bytes=new Uint8Array(len)
 
-document.getElementById("tipo").dispatchEvent(new Event("change"));
+for(let i=0;i<len;i++){
+bytes[i]=binary.charCodeAt(i)
+}
+
+return bytes
+
+}
+
+document.getElementById("gerar").onclick=async()=>{
+
+const tipo=document.getElementById("tipo").value
+const formato=document.getElementById("formato").value
+const raio=document.getElementById("raio").value
+
+const dados={}
+
+camposPorTipo[tipo].forEach(c=>{
+dados[c.id]=document.getElementById(c.id).value
+})
+
+const payload={
+tipo,
+dados,
+formato,
+raio_buraco:raio
+}
+
+const preview=document.getElementById("preview")
+const baixar=document.getElementById("baixar")
+
+preview.innerHTML='<span class="loading">Gerando QR Code...</span>'
+baixar.style.display="none"
+
+try{
+
+const resp=await fetch(API_URL,{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify(payload)
+})
+
+const base64=await resp.text()
+
+const arrayBuffer=base64ToArrayBuffer(base64)
+
+let mime="image/png"
+
+if(formato==="svg") mime="image/svg+xml"
+if(formato==="dxf") mime="application/dxf"
+
+const blob=new Blob([arrayBuffer],{type:mime})
+
+const url=URL.createObjectURL(blob)
+
+if(formato==="png"){
+
+preview.innerHTML=`<img src="${url}">`
+
+}
+
+else if(formato==="svg"){
+
+const text=await blob.text()
+preview.innerHTML=text
+
+}
+
+else{
+
+preview.innerHTML="<p>Arquivo DXF gerado</p>"
+
+}
+
+baixar.href=url
+baixar.download=`qr_code.${formato}`
+baixar.style.display="inline-block"
+
+}catch(e){
+
+preview.innerHTML="<b>Erro ao gerar QR Code</b>"
+
+}
+
+}
+
 </script>
 
 </body>
