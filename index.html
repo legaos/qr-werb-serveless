@@ -61,20 +61,20 @@ document.getElementById("gerar").addEventListener("click", async () => {
 
     if (!resp.ok) throw new Error("Erro ao gerar QR code");
 
-    const data = await resp.json();
+    // Lê a resposta como texto (body base64)
+    const bodyBase64 = await resp.text();
 
-    // Transformar base64 da Lambda em Data URL
-    const imgBase64 = data.body;
     const resultadoDiv = document.getElementById("resultado");
     resultadoDiv.innerHTML = "";
 
-    if(formato === "svg") {
-      // SVG pode ser inserido diretamente
-      resultadoDiv.innerHTML = atob(imgBase64);
+    if (formato === "svg") {
+      // SVG: decodifica base64 para string e insere no DOM
+      const svgText = atob(bodyBase64);
+      resultadoDiv.innerHTML = svgText;
     } else {
-      // PNG / outros
+      // PNG / outros: cria Data URL
       const img = document.createElement("img");
-      img.src = `data:image/png;base64,${imgBase64}`;
+      img.src = `data:image/png;base64,${bodyBase64}`;
       resultadoDiv.appendChild(img);
     }
 
