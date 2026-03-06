@@ -24,7 +24,7 @@ button { cursor: pointer; }
 </select>
 
 <label for="dados">Dados (JSON):</label>
-<textarea id="dados" rows="6" placeholder='Ex: {"url":"https://example.com"}'></textarea>
+<textarea id="dados" rows="8"></textarea>
 
 <label for="formato">Formato:</label>
 <select id="formato">
@@ -41,6 +41,32 @@ button { cursor: pointer; }
 
 <script>
 const API_URL = "https://ic1mmoxkd4.execute-api.us-east-1.amazonaws.com/prod/qr";
+
+// JSON pré-carregados por tipo
+const exemplos = {
+  "URL": JSON.stringify({ "url":"https://example.com" }, null, 2),
+  "CONTATO": JSON.stringify({
+      "nome":"Teste",
+      "telefone":"11999999999",
+      "email":"leo@example.com",
+      "empresa":"Minha Empresa",
+      "cargo":"Desenvolvedor"
+  }, null, 2),
+  "REDE_SOCIAL": JSON.stringify({ "rede":"instagram","usuario":"@meuperfil" }, null, 2),
+  "PIX": JSON.stringify({
+      "chave":"11999999999",
+      "nome":"LTesteeonardo",
+      "cidade":"São Paulo",
+      "valor":"10.50",
+      "descricao":"Doação"
+  }, null, 2)
+};
+
+// Atualiza textarea quando muda o tipo
+document.getElementById("tipo").addEventListener("change", () => {
+  const tipo = document.getElementById("tipo").value;
+  document.getElementById("dados").value = exemplos[tipo] || "";
+});
 
 document.getElementById("gerar").addEventListener("click", async () => {
   const tipo = document.getElementById("tipo").value;
@@ -63,9 +89,8 @@ document.getElementById("gerar").addEventListener("click", async () => {
 
     if (!resp.ok) throw new Error("Erro ao gerar QR code");
 
-    // Aqui pegamos o base64 puro (Lambda atual)
+    // Lambda retorna base64 puro
     const base64Body = await resp.text();
-
     const resultadoDiv = document.getElementById("resultado");
     resultadoDiv.innerHTML = "";
 
@@ -82,6 +107,9 @@ document.getElementById("gerar").addEventListener("click", async () => {
     alert("Erro: " + e.message);
   }
 });
+
+// inicializa textarea com o primeiro tipo
+document.getElementById("tipo").dispatchEvent(new Event("change"));
 </script>
 
 </body>
