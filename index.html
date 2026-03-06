@@ -19,7 +19,7 @@ button:hover { background:#0b5ed7; }
 </head>
 <body>
 
-<h1>Gerador de QR Code</h1>
+<h1>Gerador de QR Code - Serveless</h1>
 
 <label>Tipo de QR Code</label>
 <select id="tipo">
@@ -71,6 +71,7 @@ const camposPorTipo = {
     ]
 };
 
+// Renderiza campos dinâmicos
 function renderCampos() {
     const tipo = document.getElementById("tipo").value;
     const campos = camposPorTipo[tipo];
@@ -81,6 +82,7 @@ function renderCampos() {
 renderCampos();
 document.getElementById("tipo").addEventListener("change", renderCampos);
 
+// Função principal
 document.getElementById("gerar").onclick = async () => {
     const tipo = document.getElementById("tipo").value;
     const formato = document.getElementById("formato").value;
@@ -105,31 +107,32 @@ document.getElementById("gerar").onclick = async () => {
 
         if (!resp.ok) { const txt = await resp.text().catch(()=> ""); preview.innerHTML = "<b>Erro:</b> "+(txt||resp.statusText); return; }
 
-        const contentType = resp.headers.get("Content-Type") || "application/octet-stream";
-        const dispo = resp.headers.get("Content-Disposition") || "";
-        let filename = "qr_code";
-        const m1 = dispo.match(/filename\*=UTF-8''([^;]+)/i);
-        const m2 = dispo.match(/filename="([^"]+)"/i);
-        if(m1) filename = decodeURIComponent(m1[1]); else if(m2) filename = m2[1];
+        // Recebe o base64 da Lambda e transforma em blob
+        const data = await resp.json();
+        const bin = atob(data.body);
+        const array = new Uint8Array(bin.length);
+        for(let i=0;i<bin.length;i++) array[i]=bin.charCodeAt(i);
+        let contentType = "application/octet-stream";
+        if (formato === "png") contentType = "image/png";
+        else if (formato === "svg") contentType = "image/svg+xml";
+        else if (formato === "dxf") contentType = "application/dxf";
 
-        const blob = await resp.blob();
-        const url = URL.createObjectURL(blob);
+        const blob = new Blob([array], { type: contentType });
+        const url  = URL.createObjectURL(blob);
 
-        // Preview apenas para imagens
-        if (contentType.startsWith("image/")) {
-            if (formato === "svg") {
-                const svgText = await blob.text();
-                preview.innerHTML = svgText;
-            } else {
-                preview.innerHTML = `<img src="${url}">`;
-            }
+        // Preview inline para PNG e SVG
+        if (formato === "svg") {
+            const text = await blob.text();
+            preview.innerHTML = text;
+        } else if (formato === "png") {
+            preview.innerHTML = `<img src="${url}" style="max-width:300px">`;
         } else {
-            preview.innerHTML = `<p>Arquivo pronto: ${filename}</p>`;
+            preview.innerHTML = `<p>Arquivo pronto: QR Code DXF</p>`;
         }
 
         // Botão de download
         baixar.href = url;
-        baixar.download = filename;
+        baixar.download = `qr_code.${formato}`;
         baixar.style.display = "inline-block";
 
     } catch(e) {
